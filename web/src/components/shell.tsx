@@ -19,6 +19,7 @@ const MERCHANT_NAV = [
 const ADMIN_NAV = [
   { label: "Merchants", href: "/admin" },
   { label: "Usage", href: "/admin/usage" },
+  { label: "Contact submissions", href: "/admin/contact-submissions" },
 ];
 
 /** Redirects to the right login page if signed out, or if signed in with the wrong scope for this shell. */

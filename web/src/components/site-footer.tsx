@@ -6,8 +6,6 @@ import { apiClient } from "@/lib/api-client";
 import { PoweredBySapok } from "@/components/powered-by-sapok";
 import { Logo } from "@/components/wordmark";
 
-const API_DOCS_URL = (process.env.NEXT_PUBLIC_SAPOK_PAY_API_URL ?? "http://localhost:4100") + "/api/v1/docs";
-
 /** Shared across every marketing page — the tagline is the one piece of its own copy, pulled live so it stays in sync with what an admin sets. */
 export function SiteFooter() {
   const settingsQuery = useQuery({ queryKey: ["site-settings"], queryFn: () => apiClient.siteSettings.getPublic() });
@@ -36,11 +34,14 @@ export function SiteFooter() {
 
         <div className="flex flex-col gap-3">
           <p className="text-sm font-bold text-foreground">Developers</p>
-          <a href={API_DOCS_URL} target="_blank" rel="noreferrer" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
-            API documentation
-          </a>
-          <Link href="/developers" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
-            Quickstart
+          <Link href="/docs" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
+            Documentation
+          </Link>
+          <Link href="/integrations" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
+            Integrations
+          </Link>
+          <Link href="/status" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
+            System status
           </Link>
         </div>
 

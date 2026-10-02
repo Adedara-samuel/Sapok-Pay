@@ -1,12 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, Key, Webhook } from "lucide-react";
+import { ArrowRight, Activity, BookOpen, CheckCircle2, Key, Puzzle, Webhook } from "lucide-react";
 import { Button, Card } from "@/components/ui";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 
-const API_DOCS_URL = (process.env.NEXT_PUBLIC_SAPOK_PAY_API_URL ?? "http://localhost:4100") + "/api/v1/docs";
+const RESOURCES = [
+  { icon: BookOpen, title: "Documentation", body: "Every endpoint, request and response shape, with real code examples.", href: "/docs" },
+  { icon: Puzzle, title: "Integrations", body: "The integration path, step by step, and what you can build with it.", href: "/integrations" },
+  { icon: Activity, title: "System status", body: "Live status of the API, database and Redis — right now, not a log.", href: "/status" },
+];
 
 const DEVELOPER_POINTS = [
   "Every mutating call takes an Idempotency-Key — retry a timed-out request without any risk of double-moving money.",
@@ -72,9 +76,27 @@ export default function DevelopersPage() {
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
             </Button>
           </Link>
-          <a href={API_DOCS_URL} target="_blank" rel="noreferrer">
-            <Button variant="outline">Full API reference</Button>
-          </a>
+          <Link href="/docs">
+            <Button variant="outline">Full documentation</Button>
+          </Link>
+        </div>
+      </section>
+
+      <section className="relative mx-auto max-w-6xl px-4 pb-16 sm:px-6 sm:pb-20">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {RESOURCES.map(({ icon: Icon, title, body, href }) => (
+            <Link key={href} href={href}>
+              <Card className="h-full transition-colors hover:border-primary/40">
+                <div className="flex flex-col gap-3 p-6">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <Icon className="h-5 w-5" />
+                  </span>
+                  <p className="font-display text-base font-bold text-foreground">{title}</p>
+                  <p className="text-sm leading-relaxed text-muted-foreground">{body}</p>
+                </div>
+              </Card>
+            </Link>
+          ))}
         </div>
       </section>
 
@@ -148,9 +170,9 @@ export default function DevelopersPage() {
                   <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                 </Button>
               </Link>
-              <a href={API_DOCS_URL} target="_blank" rel="noreferrer">
-                <Button variant="outline">Full API reference</Button>
-              </a>
+              <Link href="/docs">
+                <Button variant="outline">Full documentation</Button>
+              </Link>
             </div>
           </div>
         </Card>

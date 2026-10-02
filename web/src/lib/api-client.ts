@@ -55,7 +55,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 export const apiClient = {
-  health: (): Promise<{ status: string; dependencies: { database: string; redis: string } }> => request("/api/v1/health"),
+  health: (): Promise<{ status: string; timestamp: string; dependencies: { database: string; redis: string } }> => request("/api/v1/health"),
 
   siteSettings: {
     getPublic: (): Promise<SiteSettings> => request("/api/v1/site-settings"),
