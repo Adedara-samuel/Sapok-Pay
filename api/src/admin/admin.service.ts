@@ -280,6 +280,45 @@ export class AdminService {
     };
   }
 
+  // ---- Notifications ------------------------------------------------------
+
+  /**
+   * `unreadCount` is the real count of NEW (unresponded) contact submissions
+   * — a genuine "needs attention" signal, not a decorative badge number.
+   * The feed itself merges that with signups from the last 24 hours.
+   */
+  async getNotifications() {
+    const since = new Date();
+    since.setHours(since.getHours() - 24);
+
+    const [newSubmissions, recentSignups] = await Promise.all([
+      this.prisma.contactSubmission.findMany({ where: { status: "NEW" }, orderBy: { createdAt: "desc" }, take: 10 }),
+      this.prisma.merchant.findMany({ where: { createdAt: { gte: since } }, orderBy: { createdAt: "desc" }, take: 10, select: { id: true, businessName: true, createdAt: true } }),
+    ]);
+
+    const notifications = [
+      ...newSubmissions.map((submission) => ({
+        id: `contact-${submission.id}`,
+        kind: "CONTACT_SUBMISSION" as const,
+        label: `New message from ${submission.firstName} ${submission.lastName} (${submission.companyName})`,
+        href: "/admin/contact-submissions",
+        createdAt: submission.createdAt,
+      })),
+      ...recentSignups.map((merchant) => ({
+        id: `signup-${merchant.id}`,
+        kind: "ORGANIZATION_CREATED" as const,
+        label: `${merchant.businessName} signed up`,
+        href: `/admin/merchants/${merchant.id}`,
+        createdAt: merchant.createdAt,
+      })),
+    ].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+    return {
+      unreadCount: newSubmissions.length,
+      notifications: notifications.map((n) => ({ ...n, createdAt: n.createdAt.toISOString() })),
+    };
+  }
+
   // ---- Platform-wide transactions & payouts ----------------------------
 
   async listTransactionsPlatformWide(limit = 50) {

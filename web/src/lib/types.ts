@@ -174,7 +174,111 @@ export interface ContactSubmissionInput {
   wantsUpdates: boolean;
 }
 
+export type ContactSubmissionStatus = "NEW" | "RESPONDED";
+
 export interface ContactSubmission extends ContactSubmissionInput {
   id: string;
+  status: ContactSubmissionStatus;
+  adminResponse: string | null;
+  respondedAt: string | null;
   createdAt: string;
+}
+
+export interface AdminNotification {
+  id: string;
+  kind: "CONTACT_SUBMISSION" | "ORGANIZATION_CREATED";
+  label: string;
+  href: string;
+  createdAt: string;
+}
+
+export interface NotificationsFeed {
+  unreadCount: number;
+  notifications: AdminNotification[];
+}
+
+export interface DashboardSummary {
+  totalWalletBalanceMinor: number;
+  totalPayoutsMinor: number;
+  totalPayoutsCount: number;
+  successfulTransactionsCount: number;
+  pendingPayoutsCount: number;
+  deltas: {
+    walletBalancePct: number | null;
+    payoutsPct: number | null;
+    successfulTransactionsPct: number | null;
+    pendingPayoutsPct: number | null;
+  };
+}
+
+export interface TransactionSeriesPoint {
+  date: string;
+  count: number;
+  totalMinor: number;
+}
+
+export interface ActivityEvent {
+  id: string;
+  kind: string;
+  label: string;
+  amountMinor: number | null;
+  createdAt: string;
+}
+
+export type SubscriptionStatus = "ACTIVE" | "PAST_DUE" | "CANCELED";
+export type OrgUserRole = "OWNER" | "MEMBER";
+export type OrgUserStatus = "ACTIVE" | "DISABLED";
+
+export interface OrganizationSummary extends MerchantSummary {
+  memberCount: number;
+  plan: { key: string; name: string; status: SubscriptionStatus } | null;
+}
+
+export interface PlatformUser {
+  id: string;
+  email: string;
+  name: string;
+  role: OrgUserRole;
+  /** Owners carry MerchantStatus (ACTIVE/SUSPENDED); members carry OrgUserStatus (ACTIVE/DISABLED) — admin.service.ts merges both into one list. */
+  status: "ACTIVE" | "SUSPENDED" | "DISABLED";
+  organizationId: string;
+  organizationName: string;
+  lastLoginAt: string | null;
+  createdAt: string;
+}
+
+export interface SubscriptionSummary {
+  id: string;
+  organizationId: string;
+  organizationName: string;
+  organizationEmail: string;
+  plan: { key: string; name: string; priceMinor: number; billingInterval: BillingInterval };
+  status: SubscriptionStatus;
+  currentPeriodStart: string;
+  currentPeriodEnd: string;
+}
+
+export interface PlatformTransaction {
+  id: string;
+  reference: string;
+  type: TransactionType;
+  status: TransactionStatus;
+  amountMinor: number;
+  currency: string;
+  organizationId: string;
+  organizationName: string;
+  createdAt: string;
+}
+
+export interface PlatformPayout {
+  id: string;
+  reference: string;
+  status: PayrollBatchStatus;
+  totalAmountMinor: number;
+  currency: string;
+  itemCount: number;
+  organizationId: string;
+  organizationName: string;
+  createdAt: string;
+  completedAt: string | null;
 }

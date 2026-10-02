@@ -15,3 +15,8 @@ export const submitContactSchema = z.object({
   wantsUpdates: z.boolean().default(false),
 });
 export type SubmitContactInput = z.infer<typeof submitContactSchema>;
+
+export const respondToContactSchema = z.object({
+  response: z.string().trim().min(1),
+});
+export type RespondToContactInput = z.infer<typeof respondToContactSchema>;

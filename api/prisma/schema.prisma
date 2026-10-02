@@ -425,12 +425,18 @@ enum CompanySize {
   ENTERPRISE
 }
 
-/// A lead from the public "Contact Sales" form — written by anyone, read only
-/// by an admin (GET /admin/contact-submissions). Never updated in place; a
-/// sales conversation happens outside this table, this just captures the
-/// original ask.
+enum ContactSubmissionStatus {
+  NEW
+  RESPONDED
+}
+
+/// A lead from the public "Contact Sales" form — written by anyone, read and
+/// responded to only by an admin. `adminResponse`/`respondedAt` make this a
+/// real (if minimal) two-way thread instead of a write-only void — there is
+/// deliberately no outbound-email delivery here (no SMTP/email-provider
+/// credentials exist in this project), so a response is recorded, not sent.
 model ContactSubmission {
-  id                   String      @id @default(uuid())
+  id                   String                  @id @default(uuid())
   firstName            String
   lastName             String
   workEmail            String
@@ -442,10 +448,14 @@ model ContactSubmission {
   country              String
   monthlyPaymentVolume String?
   message              String
-  wantsUpdates         Boolean     @default(false)
-  createdAt            DateTime    @default(now())
+  wantsUpdates         Boolean                 @default(false)
+  status               ContactSubmissionStatus @default(NEW)
+  adminResponse        String?
+  respondedAt          DateTime?
+  createdAt            DateTime                @default(now())
 
   @@index([createdAt])
+  @@index([status])
   @@map("contact_submissions")
 }
 

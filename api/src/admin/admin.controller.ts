@@ -9,6 +9,7 @@ import { WalletsService } from "../wallets/wallets.service";
 import { SiteSettingsService } from "../site-settings/site-settings.service";
 import { ContactService } from "../contact/contact.service";
 import { AdminService } from "./admin.service";
+import { respondToContactSchema, type RespondToContactInput } from "../contact/contact.validation";
 import {
   createUserSchema,
   transactionSeriesQuerySchema,
@@ -142,11 +143,23 @@ export class AdminController {
     return this.admin.listPayoutsPlatformWide();
   }
 
+  // ---- Notifications ------------------------------------------------------
+
+  @Get("notifications")
+  getNotifications() {
+    return this.admin.getNotifications();
+  }
+
   // ---- Contact submissions (from the public Contact Sales form) ------------
 
   @Get("contact-submissions")
   listContactSubmissions() {
     return this.contact.listForAdmin();
+  }
+
+  @Patch("contact-submissions/:id/respond")
+  respondToContactSubmission(@Param("id") id: string, @Body(new ZodValidationPipe(respondToContactSchema)) body: RespondToContactInput) {
+    return this.contact.respond(id, body.response);
   }
 
   // ---- Site settings (editable landing-page content) -----------------------

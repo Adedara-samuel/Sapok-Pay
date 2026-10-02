@@ -27,7 +27,7 @@ interface DraftItem {
 
 export default function PayrollBatchesPage() {
   return (
-    <Shell scope="merchant">
+    <Shell>
       <div>
         <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Payroll batches</h1>
         <p className="text-sm text-slate-500 dark:text-slate-400">Pay many recipients at once — each item is verified and processed independently.</p>

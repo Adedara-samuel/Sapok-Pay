@@ -16,40 +16,27 @@ const MERCHANT_NAV = [
   { label: "Webhooks", href: "/webhooks" },
 ];
 
-const ADMIN_NAV = [
-  { label: "Merchants", href: "/admin" },
-  { label: "Usage", href: "/admin/usage" },
-  { label: "Contact submissions", href: "/admin/contact-submissions" },
-];
-
-/** Redirects to the right login page if signed out, or if signed in with the wrong scope for this shell. */
-export function Shell({ scope, children }: { scope: "merchant" | "admin"; children: ReactNode }) {
+/** The merchant dashboard shell. Admin pages use AdminShell instead — a sidebar layout, not this top nav. */
+export function Shell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const accessToken = useAuthStore((state) => state.accessToken);
-  const currentScope = useAuthStore((state) => state.scope);
+  const scope = useAuthStore((state) => state.scope);
   const clear = useAuthStore((state) => state.clear);
 
   useEffect(() => {
-    if (!accessToken || currentScope !== scope) {
-      router.replace("/login");
-    }
-  }, [accessToken, currentScope, scope, router]);
+    if (!accessToken || scope !== "merchant") router.replace("/login");
+  }, [accessToken, scope, router]);
 
-  if (!accessToken || currentScope !== scope) return null;
-
-  const navItems = scope === "admin" ? ADMIN_NAV : MERCHANT_NAV;
+  if (!accessToken || scope !== "merchant") return null;
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <header className="flex items-center justify-between border-b border-border bg-surface/60 px-4 py-3 backdrop-blur sm:px-6">
         <div className="flex items-center gap-7">
-          <span className="flex items-center gap-2">
-            <Logo size="sm" />
-            {scope === "admin" && <span className="text-sm font-medium text-muted-foreground">· Admin</span>}
-          </span>
+          <Logo size="sm" />
           <nav className="hidden gap-5 sm:flex">
-            {navItems.map((item) => (
+            {MERCHANT_NAV.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
@@ -75,7 +62,7 @@ export function Shell({ scope, children }: { scope: "merchant" | "admin"; childr
         </div>
       </header>
       <nav className="flex gap-4 overflow-x-auto border-b border-border px-4 py-2 sm:hidden">
-        {navItems.map((item) => (
+        {MERCHANT_NAV.map((item) => (
           <Link key={item.href} href={item.href} className={`shrink-0 text-sm font-medium ${pathname === item.href ? "text-foreground" : "text-muted-foreground"}`}>
             {item.label}
           </Link>

@@ -37,7 +37,7 @@ export default function ApiKeysPage() {
   const keys = keysQuery.data ?? [];
 
   return (
-    <Shell scope="merchant">
+    <Shell>
       <div>
         <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">API keys</h1>
         <p className="text-sm text-slate-500 dark:text-slate-400">Use these to call SAPOK Pay from your own application. Shown in full only once, at creation.</p>

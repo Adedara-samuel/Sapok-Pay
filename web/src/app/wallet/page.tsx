@@ -20,7 +20,7 @@ const STATUS_VARIANT: Record<TransactionStatus, "success" | "danger" | "outline"
 
 export default function WalletPage() {
   return (
-    <Shell scope="merchant">
+    <Shell>
       <div>
         <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Wallet</h1>
         <p className="text-sm text-slate-500 dark:text-slate-400">Your balance, linked bank accounts, and transaction history.</p>
