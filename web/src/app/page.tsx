@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Building2, Key, ShieldCheck, Users, Wallet, Webhook, Zap } from "lucide-react";
+import { ArrowRight, Building2, CheckCircle2, Key, ShieldCheck, Users, Wallet, Webhook, Zap } from "lucide-react";
 import { Button, Card, CardContent } from "@/components/ui";
 import { useAuthStore } from "@/lib/auth-store";
 import { PoweredBySapok } from "@/components/powered-by-sapok";
@@ -24,6 +24,24 @@ const NAV_LINKS = [
   { href: "#features", label: "Features" },
   { href: "#developers", label: "Developers" },
 ];
+
+const DEVELOPER_POINTS = [
+  "Every mutating call takes an Idempotency-Key — retry a timed-out request without any risk of double-moving money.",
+  "A live wallet from the first API call — no approval queue between signup and your first transfer.",
+  "Signed webhooks for every transaction and payroll event, verifiable against a secret only you and SAPOK Pay hold.",
+];
+
+const QUICKSTART_SNIPPET = `# 1. Create a merchant — gets a live wallet instantly
+curl -X POST https://api.sapokpay.com/api/v1/auth/merchant/signup \\
+  -H "Content-Type: application/json" \\
+  -d '{"email":"you@business.com","password":"••••••••","businessName":"Acme Inc"}'
+
+# 2. Move money — idempotent by design
+curl -X POST https://api.sapokpay.com/api/v1/wallets/me/deposits \\
+  -H "Authorization: Bearer $SAPOK_PAY_TOKEN" \\
+  -H "Idempotency-Key: $(uuidgen)" \\
+  -H "Content-Type: application/json" \\
+  -d '{"bankAccountId":"bank_123","amountMinor":500000}'`;
 
 export default function RootPage() {
   const router = useRouter();
@@ -118,24 +136,43 @@ export default function RootPage() {
       </section>
 
       <section id="developers" className="relative mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
-        <Card className="overflow-hidden">
-          <CardContent className="flex flex-col items-center gap-4 px-6 py-14 text-center sm:px-14">
-            <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <Key className="h-6 w-6" />
+        <div className="grid grid-cols-1 gap-10 lg:grid-cols-2 lg:items-center">
+          <div className="flex flex-col gap-5">
+            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <Key className="h-5 w-5" />
             </span>
-            <h2 className="font-display text-3xl font-bold text-foreground">Built for developers, trusted by their finance team</h2>
-            <p className="max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-              Scoped API keys, idempotent transfers and signed webhooks mean you can automate payouts with
-              confidence — every request is verifiable and every retry is safe.
+            <h2 className="font-display text-3xl font-bold text-foreground">Built for developers, trusted by finance teams</h2>
+            <p className="text-sm leading-relaxed text-muted-foreground sm:text-base">
+              Two calls and you're moving money — a merchant account, a wallet and an API key are the same step.
             </p>
-            <Link href="/signup" className="mt-2">
+            <ul className="flex flex-col gap-3">
+              {DEVELOPER_POINTS.map((point) => (
+                <li key={point} className="flex items-start gap-2.5 text-sm text-foreground">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                  <span className="leading-relaxed text-muted-foreground">{point}</span>
+                </li>
+              ))}
+            </ul>
+            <Link href="/signup" className="mt-1 w-fit">
               <Button className="group">
                 Get your API keys
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </Button>
             </Link>
-          </CardContent>
-        </Card>
+          </div>
+
+          <div className="overflow-hidden rounded-xl border border-border bg-surface shadow-card">
+            <div className="flex items-center gap-2 border-b border-border px-4 py-2.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-danger/70" />
+              <span className="h-2.5 w-2.5 rounded-full bg-[#f5c542]/80" />
+              <span className="h-2.5 w-2.5 rounded-full bg-success/70" />
+              <span className="ml-2 font-mono text-xs text-muted-foreground">zero to moving money</span>
+            </div>
+            <pre className="overflow-x-auto px-4 py-5 text-[0.78rem] leading-relaxed">
+              <code className="text-foreground">{QUICKSTART_SNIPPET}</code>
+            </pre>
+          </div>
+        </div>
       </section>
 
       <footer className="relative mx-auto flex max-w-6xl flex-col items-center gap-6 border-t border-border px-4 py-10 sm:px-6">
