@@ -38,6 +38,12 @@ export class AuthService {
       const created = await tx.merchant.create({ data: { email, passwordHash, businessName } });
       const wallet = await tx.wallet.create({ data: { merchantId: created.id, currency: "NGN" } });
       await tx.ledgerAccount.create({ data: { walletId: wallet.id, currency: "NGN" } });
+
+      const freePlan = await tx.subscriptionPlan.findUniqueOrThrow({ where: { key: "free" } });
+      const periodEnd = new Date();
+      periodEnd.setMonth(periodEnd.getMonth() + 1);
+      await tx.subscription.create({ data: { merchantId: created.id, planId: freePlan.id, currentPeriodEnd: periodEnd } });
+
       return created;
     });
 
@@ -59,15 +65,25 @@ export class AuthService {
   }
 
   /**
-   * One login for every user — merchant or platform admin. Looks up both
-   * tables and bcrypt-compares against both (a real hash, or the timing-safe
-   * dummy one if that table had no match) before deciding, so response time
-   * never leaks which table an email belongs to, or whether it exists at
-   * all. An email could in principle exist in both tables; whichever one's
-   * password actually matches wins, checked admin-first.
+   * One login for every user — merchant, invited organization member, or
+   * platform admin. Looks up all three tables and bcrypt-compares against
+   * each (a real hash, or the timing-safe dummy one if that table had no
+   * match) before deciding, so response time never leaks which table an
+   * email belongs to, or whether it exists at all. An email could in
+   * principle exist in more than one table; whichever one's password
+   * actually matches wins, checked admin, then merchant, then member.
+   *
+   * A member's token is still issued with `sub = user.merchantId`, never
+   * `user.id` — every other service in this codebase resolves its data by
+   * merchantId, so a member logging in is indistinguishable downstream from
+   * the organization's own owner login.
    */
   async login(email: string, password: string): Promise<AuthTokens> {
-    const [admin, merchant] = await Promise.all([this.prisma.adminUser.findUnique({ where: { email } }), this.prisma.merchant.findUnique({ where: { email } })]);
+    const [admin, merchant, user] = await Promise.all([
+      this.prisma.adminUser.findUnique({ where: { email } }),
+      this.prisma.merchant.findUnique({ where: { email } }),
+      this.prisma.user.findUnique({ where: { email } }),
+    ]);
 
     const adminMatches = await bcrypt.compare(password, admin?.passwordHash ?? TIMING_SAFE_DUMMY_HASH);
     if (admin && adminMatches) {
@@ -81,6 +97,13 @@ export class AuthService {
       if (merchant.status !== "ACTIVE") throw new ForbiddenApiException("This account has been suspended. Contact support.", "ACCOUNT_SUSPENDED");
       await this.prisma.merchant.update({ where: { id: merchant.id }, data: { lastLoginAt: new Date() } });
       return this.issueTokens(merchant.id, "merchant");
+    }
+
+    const userMatches = await bcrypt.compare(password, user?.passwordHash ?? TIMING_SAFE_DUMMY_HASH);
+    if (user && userMatches) {
+      if (user.status !== "ACTIVE") throw new ForbiddenApiException("This account has been disabled", "ACCOUNT_DISABLED");
+      await this.prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
+      return this.issueTokens(user.merchantId, "merchant");
     }
 
     throw new UnauthorizedApiException("Incorrect email or password", "INVALID_CREDENTIALS");

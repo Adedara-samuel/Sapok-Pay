@@ -154,8 +154,89 @@ model Merchant {
   bankAccounts    MerchantBankAccount[]
   payrollBatches  PayrollBatch[]
   webhookEndpoint MerchantWebhookEndpoint?
+  users           User[]
+  subscription    Subscription?
 
   @@map("merchants")
+}
+
+enum UserRole {
+  OWNER
+  MEMBER
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+}
+
+/// A person who can sign in under a Merchant/Organization — distinct from the
+/// Merchant row itself (which stays the tenant + its own owner credential,
+/// unchanged, so every existing merchantId-keyed query/guard keeps working).
+/// A User's token is still issued with `sub = merchantId` (see
+/// AuthService.login), so from every other service's point of view a User
+/// login is indistinguishable from the organization's own login — only
+/// auth itself needs to know Users exist.
+model User {
+  id           String     @id @default(uuid())
+  merchantId   String
+  email        String     @unique
+  passwordHash String
+  name         String
+  role         UserRole   @default(MEMBER)
+  status       UserStatus @default(ACTIVE)
+  lastLoginAt  DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  @@index([merchantId])
+  @@map("users")
+}
+
+enum SubscriptionBillingInterval {
+  MONTHLY
+  ANNUAL
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELED
+}
+
+/// A real, seeded plan catalog — not a UI placeholder. Every merchant is
+/// assigned one at signup (see AuthService.merchantSignup).
+model SubscriptionPlan {
+  id                String                      @id @default(uuid())
+  key               String                      @unique
+  name              String
+  priceMinor        Int
+  billingInterval   SubscriptionBillingInterval @default(MONTHLY)
+  transactionFeeBps Int                         @default(0)
+  createdAt         DateTime                    @default(now())
+
+  subscriptions Subscription[]
+
+  @@map("subscription_plans")
+}
+
+/// One per Merchant — what the admin Subscriptions view is actually built on.
+model Subscription {
+  id                 String             @id @default(uuid())
+  merchantId         String             @unique
+  planId             String
+  status             SubscriptionStatus @default(ACTIVE)
+  currentPeriodStart DateTime           @default(now())
+  currentPeriodEnd   DateTime
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  merchant Merchant         @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  plan     SubscriptionPlan @relation(fields: [planId], references: [id])
+
+  @@map("subscriptions")
 }
 
 model ApiKey {
@@ -334,6 +415,21 @@ model MockBankTransfer {
 
   @@index([bankAccountId])
   @@map("mock_bank_transfers")
+}
+
+/// Key/value store for every piece of public-site copy a super admin can edit
+/// from the admin platform (hero headline, contact email, footer tagline —
+/// see SITE_SETTING_KEYS in site-settings.service.ts for the whitelist). The
+/// public GET /site-settings endpoint only ever returns whitelisted keys —
+/// this table is never a generic arbitrary-key CMS.
+model SiteSetting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  @@map("site_settings")
 }
 
 /// Append-only audit trail for every sensitive financial event (wallet
