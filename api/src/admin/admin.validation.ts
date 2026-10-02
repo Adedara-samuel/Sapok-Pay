@@ -17,3 +17,13 @@ export const transactionSeriesQuerySchema = z.object({
   range: z.enum(["7d", "30d", "90d"]).default("30d"),
 });
 export type TransactionSeriesQuery = z.infer<typeof transactionSeriesQuerySchema>;
+
+export const updatePlanSchema = z.object({
+  name: z.string().trim().min(1).optional(),
+  priceMinor: z.number().int().min(0).optional(),
+  transactionFeeBps: z.number().int().min(0).max(10_000).optional(),
+});
+export type UpdatePlanInput = z.infer<typeof updatePlanSchema>;
+
+export const updateSiteSettingsSchema = z.record(z.string(), z.string());
+export type UpdateSiteSettingsInput = z.infer<typeof updateSiteSettingsSchema>;

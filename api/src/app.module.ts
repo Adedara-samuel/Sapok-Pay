@@ -16,6 +16,8 @@ import { TransfersModule } from "./transfers/transfers.module";
 import { PayrollBatchesModule } from "./payroll-batches/payroll-batches.module";
 import { WebhooksModule } from "./webhooks/webhooks.module";
 import { ServiceAccountsModule } from "./service-accounts/service-accounts.module";
+import { SiteSettingsModule } from "./site-settings/site-settings.module";
+import { PlansModule } from "./plans/plans.module";
 import { GlobalExceptionFilter } from "./common/filters/http-exception.filter";
 import { ResponseInterceptor } from "./common/interceptors/response.interceptor";
 import { ApiUsageInterceptor } from "./common/interceptors/api-usage.interceptor";
@@ -43,6 +45,8 @@ import { ApiUsageInterceptor } from "./common/interceptors/api-usage.interceptor
     PayrollBatchesModule,
     WebhooksModule,
     ServiceAccountsModule,
+    SiteSettingsModule,
+    PlansModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
