@@ -1,5 +1,5 @@
 import { Body, Controller, HttpCode, HttpStatus, Post } from "@nestjs/common";
-import { ApiTags } from "@nestjs/swagger";
+import { ApiExcludeEndpoint, ApiTags } from "@nestjs/swagger";
 import { Throttle } from "@nestjs/throttler";
 import { Public } from "../common/decorators/public.decorator";
 import { ZodValidationPipe } from "../common/pipes/zod-validation.pipe";
@@ -24,7 +24,11 @@ export class AuthController {
   // comment for why it's timing-safe across both tables. The older
   // merchant/login and admin/login routes below are unchanged (existing
   // e2e tests and any other caller already depend on them) — this is an
-  // addition, not a replacement.
+  // addition, not a replacement. Excluded from the public API docs: it's an
+  // internal implementation detail of SAPOK Pay's own web dashboard, not
+  // part of the merchant integration surface — a third-party developer
+  // should use merchant/login below instead.
+  @ApiExcludeEndpoint()
   @Public()
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post("login")
@@ -41,6 +45,9 @@ export class AuthController {
     return this.authService.merchantLogin(body.email, body.password);
   }
 
+  // Excluded from the public docs — platform-operator login has no business
+  // being visible on a page meant to show merchants how to integrate.
+  @ApiExcludeEndpoint()
   @Public()
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post("admin/login")

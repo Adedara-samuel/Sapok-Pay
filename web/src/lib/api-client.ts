@@ -3,10 +3,16 @@ import type {
   ApiKeySummary,
   AuthTokens,
   BankAccount,
+  ContactSubmission,
+  ContactSubmissionInput,
   CreatedApiKey,
   MerchantSummary,
+  Plan,
+  PlanDetailed,
   PayrollBatch,
   PayrollBatchSummary,
+  SiteSettingField,
+  SiteSettings,
   Transaction,
   UsageSummary,
   Wallet,
@@ -50,6 +56,19 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 export const apiClient = {
   health: (): Promise<{ status: string; dependencies: { database: string; redis: string } }> => request("/api/v1/health"),
+
+  siteSettings: {
+    getPublic: (): Promise<SiteSettings> => request("/api/v1/site-settings"),
+  },
+
+  plans: {
+    listPublic: (): Promise<Plan[]> => request("/api/v1/plans"),
+  },
+
+  contact: {
+    submit: (input: ContactSubmissionInput): Promise<{ id: string; createdAt: string }> =>
+      request("/api/v1/contact", { method: "POST", body: JSON.stringify(input) }),
+  },
 
   auth: {
     /** One login for every user — merchant or admin — the backend figures out which. */
@@ -126,6 +145,13 @@ export const apiClient = {
     getMerchant: (id: string): Promise<MerchantSummary> => request(`/api/v1/admin/merchants/${id}`),
     getUsage: (): Promise<UsageSummary> => request("/api/v1/admin/usage"),
     listMerchantTransactions: (id: string): Promise<Transaction[]> => request(`/api/v1/admin/merchants/${id}/transactions`),
+    listContactSubmissions: (): Promise<ContactSubmission[]> => request("/api/v1/admin/contact-submissions"),
+    listSiteSettings: (): Promise<SiteSettingField[]> => request("/api/v1/admin/site-settings"),
+    updateSiteSettings: (updates: Record<string, string>): Promise<void> =>
+      request("/api/v1/admin/site-settings", { method: "PATCH", body: JSON.stringify(updates) }),
+    listSubscriptionPlans: (): Promise<PlanDetailed[]> => request("/api/v1/admin/subscription-plans"),
+    updatePlanPricing: (planId: string, input: { name?: string; priceMinor?: number; transactionFeeBps?: number }): Promise<PlanDetailed> =>
+      request(`/api/v1/admin/subscription-plans/${planId}`, { method: "PATCH", body: JSON.stringify(input) }),
     postAdjustment: (
       merchantId: string,
       input: { amountMinor: number; direction: "CREDIT" | "DEBIT"; description: string },

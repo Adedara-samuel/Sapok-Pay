@@ -5,6 +5,14 @@ import { Logger } from "@nestjs/common";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import helmet from "helmet";
 import { AppModule } from "./app.module";
+import { HealthModule } from "./health/health.module";
+import { AuthModule } from "./auth/auth.module";
+import { ApiKeysModule } from "./api-keys/api-keys.module";
+import { WalletsModule } from "./wallets/wallets.module";
+import { BankAccountsModule } from "./bank-accounts/bank-accounts.module";
+import { TransfersModule } from "./transfers/transfers.module";
+import { PayrollBatchesModule } from "./payroll-batches/payroll-batches.module";
+import { WebhooksModule } from "./webhooks/webhooks.module";
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
@@ -29,11 +37,19 @@ async function bootstrap(): Promise<void> {
   if (config.get<string>("NODE_ENV") !== "production") {
     const swaggerConfig = new DocumentBuilder()
       .setTitle("SAPOK Pay")
-      .setDescription("Organisational wallet, ledger, bank-connection and payroll-payment infrastructure")
+      .setDescription("Integrate as a merchant: sign up, manage your wallet, move money and receive webhooks.")
       .setVersion("1.0")
       .addBearerAuth()
       .build();
-    const document = SwaggerModule.createDocument(app, swaggerConfig);
+
+    // Publicly linked from the marketing site, so it must only ever document
+    // merchant-facing integration surface. AdminModule and ServiceAccountsModule
+    // (platform-operator and NEXORA-internal provisioning routes) are
+    // deliberately excluded — a merchant developer has no business reason to
+    // see those, and the website must never point at them.
+    const document = SwaggerModule.createDocument(app, swaggerConfig, {
+      include: [AuthModule, ApiKeysModule, WalletsModule, BankAccountsModule, TransfersModule, PayrollBatchesModule, WebhooksModule, HealthModule],
+    });
     SwaggerModule.setup(`${globalPrefix}/docs`, app, document);
   }
 

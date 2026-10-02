@@ -18,6 +18,7 @@ import { WebhooksModule } from "./webhooks/webhooks.module";
 import { ServiceAccountsModule } from "./service-accounts/service-accounts.module";
 import { SiteSettingsModule } from "./site-settings/site-settings.module";
 import { PlansModule } from "./plans/plans.module";
+import { ContactModule } from "./contact/contact.module";
 import { GlobalExceptionFilter } from "./common/filters/http-exception.filter";
 import { ResponseInterceptor } from "./common/interceptors/response.interceptor";
 import { ApiUsageInterceptor } from "./common/interceptors/api-usage.interceptor";
@@ -47,6 +48,7 @@ import { ApiUsageInterceptor } from "./common/interceptors/api-usage.interceptor
     ServiceAccountsModule,
     SiteSettingsModule,
     PlansModule,
+    ContactModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

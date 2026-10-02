@@ -417,6 +417,38 @@ model MockBankTransfer {
   @@map("mock_bank_transfers")
 }
 
+enum CompanySize {
+  SOLO
+  SMALL
+  MEDIUM
+  LARGE
+  ENTERPRISE
+}
+
+/// A lead from the public "Contact Sales" form — written by anyone, read only
+/// by an admin (GET /admin/contact-submissions). Never updated in place; a
+/// sales conversation happens outside this table, this just captures the
+/// original ask.
+model ContactSubmission {
+  id                   String      @id @default(uuid())
+  firstName            String
+  lastName             String
+  workEmail            String
+  phone                String?
+  companyName          String
+  companyWebsite       String?
+  companySize          CompanySize
+  primaryProduct       String
+  country              String
+  monthlyPaymentVolume String?
+  message              String
+  wantsUpdates         Boolean     @default(false)
+  createdAt            DateTime    @default(now())
+
+  @@index([createdAt])
+  @@map("contact_submissions")
+}
+
 /// Key/value store for every piece of public-site copy a super admin can edit
 /// from the admin platform (hero headline, contact email, footer tagline —
 /// see SITE_SETTING_KEYS in site-settings.service.ts for the whitelist). The

@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Building2, CheckCircle2, Key, ShieldCheck, Users, Wallet, Webhook, Zap } from "lucide-react";
-import { Button, Card, CardContent } from "@/components/ui";
+import { useQuery } from "@tanstack/react-query";
+import { ArrowRight, Building2, Key, Lock, ShieldCheck, Users, Wallet, Webhook, Zap } from "lucide-react";
+import { Button, Card } from "@/components/ui";
+import { apiClient } from "@/lib/api-client";
 import { useAuthStore } from "@/lib/auth-store";
-import { PoweredBySapok } from "@/components/powered-by-sapok";
-import { ThemeToggle } from "@/components/theme-toggle";
-import { Logo } from "@/components/wordmark";
+import { SiteHeader } from "@/components/site-header";
+import { SiteFooter } from "@/components/site-footer";
 import { PaymentFlow } from "@/components/payment-flow";
 
 const FEATURES = [
@@ -20,33 +21,26 @@ const FEATURES = [
   { icon: Webhook, title: "Signed webhooks", body: "Every transfer and payroll event ships as a signed webhook, so your systems can verify it actually came from SAPOK Pay." },
 ];
 
-const NAV_LINKS = [
-  { href: "#features", label: "Features" },
-  { href: "#developers", label: "Developers" },
+const DEEP_DIVES = [
+  {
+    icon: Lock,
+    title: "Idempotent by design",
+    body: "Every mutating endpoint — deposits, withdrawals, payroll batches, admin adjustments — requires an Idempotency-Key header. Replay the exact same request after a timeout and you get the original result back, never a duplicate transaction. It isn't a best-effort guard; it's enforced at the database level with a unique constraint on the key.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "A real double-entry ledger",
+    body: "A wallet never carries a mutable balance column. Every transaction posts exactly two ledger entries — one debit, one credit — and a balance is always computed by summing them. Concurrent debits are serialized at the database isolation level, so two requests racing against the same balance can't both succeed.",
+  },
 ];
-
-const DEVELOPER_POINTS = [
-  "Every mutating call takes an Idempotency-Key — retry a timed-out request without any risk of double-moving money.",
-  "A live wallet from the first API call — no approval queue between signup and your first transfer.",
-  "Signed webhooks for every transaction and payroll event, verifiable against a secret only you and SAPOK Pay hold.",
-];
-
-const QUICKSTART_SNIPPET = `# 1. Create a merchant — gets a live wallet instantly
-curl -X POST https://api.sapokpay.com/api/v1/auth/merchant/signup \\
-  -H "Content-Type: application/json" \\
-  -d '{"email":"you@business.com","password":"••••••••","businessName":"Acme Inc"}'
-
-# 2. Move money — idempotent by design
-curl -X POST https://api.sapokpay.com/api/v1/wallets/me/deposits \\
-  -H "Authorization: Bearer $SAPOK_PAY_TOKEN" \\
-  -H "Idempotency-Key: $(uuidgen)" \\
-  -H "Content-Type: application/json" \\
-  -d '{"bankAccountId":"bank_123","amountMinor":500000}'`;
 
 export default function RootPage() {
   const router = useRouter();
   const accessToken = useAuthStore((state) => state.accessToken);
   const scope = useAuthStore((state) => state.scope);
+
+  const settingsQuery = useQuery({ queryKey: ["site-settings"], queryFn: () => apiClient.siteSettings.getPublic() });
+  const settings = settingsQuery.data;
 
   useEffect(() => {
     if (accessToken && scope === "merchant") router.replace("/wallet");
@@ -58,43 +52,33 @@ export default function RootPage() {
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_at_20%_-10%,hsl(var(--primary)/0.14),transparent_55%)]" />
       <div className="pointer-events-none fixed -inset-1/3 animate-float bg-[radial-gradient(circle_at_80%_20%,hsl(var(--accent)/0.1),transparent_45%)]" />
 
-      <header className="sticky top-0 z-30 border-b border-border/60 bg-background/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
-          <Logo />
-          <nav className="hidden items-center gap-8 md:flex">
-            {NAV_LINKS.map((link) => (
-              <a key={link.href} href={link.href} className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
-                {link.label}
-              </a>
-            ))}
-          </nav>
-          <div className="flex items-center gap-2 sm:gap-3">
-            <ThemeToggle />
-            <Link href="/login">
-              <Button variant="ghost" className="hidden sm:inline-flex">
-                Log in
-              </Button>
-            </Link>
-            <Link href="/signup">
-              <Button>Sign up</Button>
-            </Link>
-          </div>
-        </div>
-      </header>
+      <SiteHeader />
 
       <section className="relative mx-auto grid max-w-6xl grid-cols-1 items-center gap-10 px-4 py-16 sm:px-6 sm:py-24 lg:grid-cols-[1.1fr_1fr] lg:gap-6">
         <div className="flex flex-col gap-6 animate-fade-in-up">
           <span className="flex w-fit items-center gap-2 rounded-full border border-border bg-surface px-3 py-1 text-xs font-medium text-muted-foreground">
             <ShieldCheck className="h-3.5 w-3.5 text-primary" />
-            Powered by SAPOK
+            {settings?.hero_eyebrow ?? <span className="inline-block h-3 w-28 animate-pulse rounded bg-muted" />}
           </span>
-          <h1 className="font-display text-4xl font-extrabold leading-[1.1] text-foreground sm:text-5xl lg:text-6xl">
-            Payments infrastructure, <span className="bg-gradient-to-br from-accent to-primary bg-clip-text text-transparent">wired right.</span>
-          </h1>
-          <p className="max-w-lg text-base leading-relaxed text-muted-foreground sm:text-lg">
-            SAPOK Pay gives every merchant a wallet, a bank connection and a set of signed webhooks on day one —
-            the payments layer other products build on, not another dashboard to babysit.
-          </p>
+
+          {settings ? (
+            <h1 className="font-display text-4xl font-extrabold leading-[1.1] text-foreground sm:text-5xl lg:text-6xl">
+              {settings.hero_headline.replace(/\.$/, "")}
+              <span className="bg-gradient-to-br from-accent to-primary bg-clip-text text-transparent">.</span>
+            </h1>
+          ) : (
+            <div className="flex flex-col gap-3">
+              <span className="h-11 w-full max-w-md animate-pulse rounded bg-muted sm:h-14" />
+              <span className="h-11 w-3/4 max-w-sm animate-pulse rounded bg-muted sm:h-14" />
+            </div>
+          )}
+
+          {settings ? (
+            <p className="max-w-lg text-base leading-relaxed text-muted-foreground sm:text-lg">{settings.hero_subheadline}</p>
+          ) : (
+            <span className="h-16 w-full max-w-lg animate-pulse rounded bg-muted" />
+          )}
+
           <div className="mt-2 flex flex-wrap gap-3">
             <Link href="/signup">
               <Button className="group">
@@ -123,70 +107,89 @@ export default function RootPage() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {FEATURES.map(({ icon: Icon, title, body }, i) => (
             <Card key={title} style={{ animationDelay: `${i * 60}ms` }} className="animate-fade-in-up transition-colors hover:border-primary/40">
-              <CardContent className="flex flex-col gap-3 pt-6">
+              <div className="flex flex-col gap-3 p-5 sm:p-6">
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
                   <Icon className="h-5 w-5" />
                 </span>
                 <p className="font-display text-base font-bold text-foreground">{title}</p>
                 <p className="text-sm leading-relaxed text-muted-foreground">{body}</p>
-              </CardContent>
+              </div>
             </Card>
           ))}
         </div>
       </section>
 
-      <section id="developers" className="relative mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
-        <div className="grid grid-cols-1 gap-10 lg:grid-cols-2 lg:items-center">
-          <div className="flex flex-col gap-5">
-            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <Key className="h-5 w-5" />
-            </span>
-            <h2 className="font-display text-3xl font-bold text-foreground">Built for developers, trusted by finance teams</h2>
-            <p className="text-sm leading-relaxed text-muted-foreground sm:text-base">
-              Two calls and you're moving money — a merchant account, a wallet and an API key are the same step.
-            </p>
-            <ul className="flex flex-col gap-3">
-              {DEVELOPER_POINTS.map((point) => (
-                <li key={point} className="flex items-start gap-2.5 text-sm text-foreground">
-                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                  <span className="leading-relaxed text-muted-foreground">{point}</span>
-                </li>
-              ))}
-            </ul>
-            <Link href="/signup" className="mt-1 w-fit">
-              <Button className="group">
-                Get your API keys
+      <section className="relative mx-auto flex max-w-6xl flex-col gap-16 px-4 py-16 sm:px-6 sm:py-20">
+        {DEEP_DIVES.map(({ icon: Icon, title, body }, i) => (
+          <div key={title} className={`grid grid-cols-1 items-center gap-8 lg:grid-cols-2 ${i % 2 === 1 ? "lg:[&>*:first-child]:order-2" : ""}`}>
+            <div className="flex aspect-[4/3] items-center justify-center rounded-xl border border-border bg-surface">
+              <Icon className="h-16 w-16 text-primary/70" />
+            </div>
+            <div className="flex flex-col gap-3">
+              <h3 className="font-display text-2xl font-bold text-foreground sm:text-3xl">{title}</h3>
+              <p className="text-sm leading-relaxed text-muted-foreground sm:text-base">{body}</p>
+            </div>
+          </div>
+        ))}
+      </section>
+
+      <section className="relative mx-auto grid max-w-6xl grid-cols-1 gap-4 px-4 py-16 sm:px-6 sm:py-20 md:grid-cols-2">
+        <Card className="transition-colors hover:border-primary/40">
+          <div className="flex flex-col gap-3 p-6 sm:p-8">
+            <p className="font-display text-xl font-bold text-foreground">Simple, transparent pricing</p>
+            <p className="text-sm leading-relaxed text-muted-foreground">Start free. See every plan and exactly how the per-transaction fee works.</p>
+            <Link href="/pricing" className="mt-1 w-fit">
+              <Button variant="outline" className="group">
+                View pricing
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </Button>
             </Link>
           </div>
-
-          <div className="overflow-hidden rounded-xl border border-border bg-surface shadow-card">
-            <div className="flex items-center gap-2 border-b border-border px-4 py-2.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-danger/70" />
-              <span className="h-2.5 w-2.5 rounded-full bg-[#f5c542]/80" />
-              <span className="h-2.5 w-2.5 rounded-full bg-success/70" />
-              <span className="ml-2 font-mono text-xs text-muted-foreground">zero to moving money</span>
-            </div>
-            <pre className="overflow-x-auto px-4 py-5 text-[0.78rem] leading-relaxed">
-              <code className="text-foreground">{QUICKSTART_SNIPPET}</code>
-            </pre>
+        </Card>
+        <Card className="transition-colors hover:border-primary/40">
+          <div className="flex flex-col gap-3 p-6 sm:p-8">
+            <p className="font-display text-xl font-bold text-foreground">Built for developers</p>
+            <p className="text-sm leading-relaxed text-muted-foreground">A real quickstart, the full API reference, and how authentication and webhooks work.</p>
+            <Link href="/developers" className="mt-1 w-fit">
+              <Button variant="outline" className="group">
+                Read the docs
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+              </Button>
+            </Link>
           </div>
-        </div>
+        </Card>
       </section>
 
-      <footer className="relative mx-auto flex max-w-6xl flex-col items-center gap-6 border-t border-border px-4 py-10 sm:px-6">
-        <Logo />
-        <div className="flex gap-6 text-sm font-medium text-muted-foreground">
-          <Link href="/login" className="transition-colors hover:text-foreground">
-            Log in
-          </Link>
-          <Link href="/signup" className="transition-colors hover:text-foreground">
-            Sign up
-          </Link>
-        </div>
-        <PoweredBySapok />
-      </footer>
+      <section className="relative mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
+        <Card className="overflow-hidden">
+          <div className="flex flex-col items-center gap-4 p-6 py-14 text-center sm:p-14">
+            {settings ? (
+              <>
+                <h2 className="font-display text-3xl font-bold text-foreground">{settings.cta_headline}</h2>
+                <p className="max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base">{settings.cta_subheadline}</p>
+              </>
+            ) : (
+              <div className="flex w-full max-w-md flex-col items-center gap-3">
+                <span className="h-8 w-56 animate-pulse rounded bg-muted" />
+                <span className="h-5 w-full animate-pulse rounded bg-muted" />
+              </div>
+            )}
+            <div className="mt-2 flex flex-wrap justify-center gap-3">
+              <Link href="/signup">
+                <Button className="group">
+                  Create a free account
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                </Button>
+              </Link>
+              <Link href="/contact">
+                <Button variant="outline">Contact sales</Button>
+              </Link>
+            </div>
+          </div>
+        </Card>
+      </section>
+
+      <SiteFooter />
     </main>
   );
 }

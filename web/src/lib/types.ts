@@ -131,3 +131,50 @@ export interface UsageSummary {
   totalEvents: number;
   byMerchant: { merchantId: string; businessName: string; requestCount: number }[];
 }
+
+export type SiteSettings = Record<string, string>;
+
+export interface SiteSettingField {
+  key: string;
+  label: string;
+  description: string;
+  value: string;
+  updatedAt: string | null;
+}
+
+export type BillingInterval = "MONTHLY" | "ANNUAL";
+
+export interface Plan {
+  key: string;
+  name: string;
+  priceMinor: number;
+  billingInterval: BillingInterval;
+  transactionFeeBps: number;
+}
+
+export interface PlanDetailed extends Plan {
+  id: string;
+  createdAt: string;
+}
+
+export type CompanySize = "SOLO" | "SMALL" | "MEDIUM" | "LARGE" | "ENTERPRISE";
+
+export interface ContactSubmissionInput {
+  firstName: string;
+  lastName: string;
+  workEmail: string;
+  phone?: string;
+  companyName: string;
+  companyWebsite?: string;
+  companySize: CompanySize;
+  primaryProduct: string;
+  country: string;
+  monthlyPaymentVolume?: string;
+  message: string;
+  wantsUpdates: boolean;
+}
+
+export interface ContactSubmission extends ContactSubmissionInput {
+  id: string;
+  createdAt: string;
+}

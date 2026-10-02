@@ -11,6 +11,31 @@ const PLANS = [
 ];
 
 /**
+ * Real seeded rows for every editable piece of landing-page copy — not just
+ * the in-code fallback in SITE_SETTING_DEFS. A super admin edits these from
+ * the admin platform's Settings page; the public site always reads the DB
+ * row first, the code default only if a row was somehow never seeded.
+ */
+const SITE_SETTINGS = [
+  { key: "hero_eyebrow", value: "Powered by SAPOK" },
+  { key: "hero_headline", value: "Payments infrastructure, wired right." },
+  {
+    key: "hero_subheadline",
+    value:
+      "SAPOK Pay helps businesses get paid, pay out, and move money with confidence — a wallet, a bank connection and signed webhooks, live from the moment you sign up.",
+  },
+  { key: "contact_email", value: "hello@sapokpay.com" },
+  { key: "contact_heading", value: "Talk to us" },
+  {
+    key: "contact_body",
+    value: "Questions about integrating SAPOK Pay, a specific merchant account, or anything else — reach out and a real person will get back to you.",
+  },
+  { key: "footer_tagline", value: "Modern payments infrastructure, built for the long run." },
+  { key: "cta_headline", value: "Start moving money today." },
+  { key: "cta_subheadline", value: "Create a merchant account and you'll have a live wallet before you've finished reading the docs." },
+];
+
+/**
  * Seeds the one AdminUser (platform operator) account and the subscription
  * plan catalog. Merchants are never seeded — they sign up for real through
  * POST /auth/merchant/signup.
@@ -47,6 +72,11 @@ async function main(): Promise<void> {
     });
     console.log(`Backfilled ${unsubscribed.length} pre-existing merchant(s) onto the Free plan.`);
   }
+
+  for (const setting of SITE_SETTINGS) {
+    await prisma.siteSetting.upsert({ where: { key: setting.key }, update: {}, create: { key: setting.key, value: setting.value, updatedBy: "SEED" } });
+  }
+  console.log(`Seeded ${SITE_SETTINGS.length} site settings.`);
 }
 
 main()
