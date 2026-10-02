@@ -1,0 +1,33 @@
+{
+  "name": "sapok-pay-web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SAPOK Pay admin dashboard — Next.js, deployed to Vercel",
+  "scripts": {
+    "dev": "next dev -p 4110",
+    "build": "next build",
+    "start": "next start -p 4110",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^5.9.1",
+    "@tanstack/react-query": "^5.59.16",
+    "lucide-react": "^1.41.0",
+    "next": "^14.2.15",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-hook-form": "^7.87.0",
+    "zod": "^4.5.4",
+    "zustand": "^5.0.15"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "@types/react": "^18.3.11",
+    "@types/react-dom": "^18.3.1",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.13",
+    "typescript": "^5.6.3"
+  }
+}

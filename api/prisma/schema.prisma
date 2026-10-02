@@ -1,0 +1,478 @@
+// SAPOK Pay — Prisma schema
+//
+// Phase 1 (Foundation): service scaffold. No models — but Prisma refuses to
+// generate a client with zero models defined, so Phase 2's schema shape
+// (below) had to be drafted before Phase 1 could even be verified. This is
+// a schema-only advance: no service/controller reads or writes these models
+// yet, and no business logic (wallet creation, crediting, idempotency
+// enforcement) exists. That's still Phase 2/4's job.
+//
+// Phase 2 (this change): wallet + ledger schema, double-entry-ready.
+//   - Wallet         : one per Organisation. Never carries a mutable
+//     `balance` column — see LedgerEntry below.
+//   - LedgerAccount  : one per Wallet for now (a future phase could add
+//     more account types per wallet — fees, reserves — each its own row).
+//   - LedgerEntry    : append-only. A Wallet's balance is
+//     SUM(CREDIT) - SUM(DEBIT) over its LedgerAccount's entries, computed,
+//     never stored as a single mutable counter.
+//   - Transaction    : the record of one financial operation. Each
+//     Transaction produces exactly two LedgerEntry rows (one DEBIT, one
+//     CREDIT) once double-entry posting logic lands (Phase 4) — this phase
+//     only owns the shape. `idempotencyKey` is unique so replaying the same
+//     mutation request can't create a duplicate Transaction.
+//
+// SAPOK Pay owns its OWN database — deliberately not sharing NEXORA Core
+// API's Postgres instance.
+//
+// Phase 3 (this change): public self-service platform — merchant signup,
+// API keys, and a separate platform-operator (AdminUser) role with full
+// visibility across every merchant.
+//   - Merchant       : the tenant concept for SAPOK Pay. Any external
+//     developer/business can sign up (POST /auth/merchant/signup) and gets
+//     their own Wallet automatically. A NEXORA Organisation being
+//     provisioned by Core API is ALSO just a Merchant row under the hood
+//     (created via a privileged service-auth endpoint instead of public
+//     signup) — one tenant model serves both the public self-service
+//     product and the NEXORA integration, deliberately not two parallel
+//     systems.
+//   - AdminUser      : the platform OPERATOR (you), completely separate
+//     from Merchant — a superadmin flag on the customer table would let a
+//     compromised merchant session escalate; a wholly separate auth
+//     entity/login can't.
+//   - ApiKey         : merchants authenticate their own applications with
+//     these (Bearer sapok_live_<random>), separate from the JWT session
+//     used for the merchant's own dashboard login. Only `keyHash` is
+//     stored — the raw key is shown exactly once, at creation.
+//   - ApiUsageEvent  : one row per API request, keyed by merchant + key —
+//     what the AdminUser's usage views and (eventually) usage-based
+//     billing are built on.
+//
+// Wallet.organisationId → Wallet.merchantId: renamed/re-pointed at Merchant
+// instead of an opaque cross-service organisationId string, now that
+// Merchant is the real owning entity.
+//
+// Phase 4 (this change): real wallet crediting/debiting.
+//   - AuditLog : append-only, one row per sensitive financial event —
+//     wallet adjustments now, funding/transfers/payroll/reversals as those
+//     phases land. actorId is loose (not a foreign key), same reasoning as
+//     NEXORA Core API's AuditLog: the actor can be an AdminUser, a
+//     Merchant, or "SYSTEM", each a different identity space.
+//   - No new financial-trigger models yet — WalletsService.postAdjustment
+//     is admin-only for now (there's no bank/provider until Phase 5/6 to
+//     verify a merchant's own funding claim), using the existing
+//     Transaction.type = ADJUSTMENT and a real double-entry LedgerEntry
+//     posting. Debits run inside a SERIALIZABLE transaction specifically
+//     to prevent a double-spend race between two concurrent debits both
+//     reading a stale balance before either commits.
+//
+// Every later phase ADDS models here — this file is never treated as final.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum WalletTransactionType {
+  CREDIT
+  DEBIT
+  TRANSFER
+  FUNDING
+  PAYOUT
+  REFUND
+  REVERSAL
+  ADJUSTMENT
+}
+
+enum TransactionStatus {
+  PENDING
+  PROCESSING
+  SUCCESSFUL
+  FAILED
+  REVERSED
+}
+
+enum LedgerEntryDirection {
+  DEBIT
+  CREDIT
+}
+
+enum MerchantStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum AdminUserStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum ApiKeyStatus {
+  ACTIVE
+  REVOKED
+}
+
+/// The platform operator — you. Deliberately a separate model/login from
+/// Merchant, not a role flag on it.
+model AdminUser {
+  id           String          @id @default(uuid())
+  email        String          @unique
+  passwordHash String
+  name         String
+  status       AdminUserStatus @default(ACTIVE)
+  lastLoginAt  DateTime?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@map("admin_users")
+}
+
+/// The tenant concept — any signed-up developer/business, or a NEXORA
+/// Organisation provisioned programmatically by Core API.
+model Merchant {
+  id           String         @id @default(uuid())
+  email        String         @unique
+  passwordHash String
+  businessName String
+  status       MerchantStatus @default(ACTIVE)
+  /// Set only for merchants provisioned programmatically via the
+  /// SERVICE_AUTH_SECRET-gated /service/merchants endpoint (e.g. a NEXORA
+  /// Organisation) — holds the caller's own ID for that org/tenant, so
+  /// provisioning is idempotent (calling twice with the same reference
+  /// returns the existing merchant instead of creating a duplicate). Null
+  /// for every normal self-service signup.
+  externalReference String?   @unique
+  lastLoginAt  DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  wallet          Wallet?
+  apiKeys         ApiKey[]
+  bankAccounts    MerchantBankAccount[]
+  payrollBatches  PayrollBatch[]
+  webhookEndpoint MerchantWebhookEndpoint?
+
+  @@map("merchants")
+}
+
+model ApiKey {
+  id         String       @id @default(uuid())
+  merchantId String
+  name       String
+  /// Shown to the merchant to identify the key in lists — the full key is
+  /// only ever shown once, at creation.
+  prefix     String
+  keyHash    String       @unique
+  status     ApiKeyStatus @default(ACTIVE)
+  lastUsedAt DateTime?
+  createdAt  DateTime     @default(now())
+  revokedAt  DateTime?
+
+  merchant Merchant        @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  usage    ApiUsageEvent[]
+
+  @@index([merchantId])
+  @@map("api_keys")
+}
+
+model ApiUsageEvent {
+  id         String   @id @default(uuid())
+  merchantId String
+  apiKeyId   String
+  method     String
+  path       String
+  statusCode Int
+  createdAt  DateTime @default(now())
+
+  apiKey ApiKey @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+
+  @@index([merchantId])
+  @@index([createdAt])
+  @@map("api_usage_events")
+}
+
+/// One per Merchant.
+model Wallet {
+  id         String   @id @default(uuid())
+  merchantId String   @unique
+  currency   String   @default("NGN")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  merchant      Merchant       @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  ledgerAccount LedgerAccount?
+  transactions  Transaction[]
+
+  @@map("wallets")
+}
+
+model LedgerAccount {
+  id        String   @id @default(uuid())
+  walletId  String   @unique
+  name      String   @default("main")
+  currency  String
+  createdAt DateTime @default(now())
+
+  wallet  Wallet        @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  entries LedgerEntry[]
+
+  @@map("ledger_accounts")
+}
+
+/// Immutable — never updated or deleted after creation, only ever inserted.
+model LedgerEntry {
+  id              String               @id @default(uuid())
+  ledgerAccountId String
+  transactionId   String
+  direction       LedgerEntryDirection
+  amountMinor     Int
+  currency        String
+  createdAt       DateTime             @default(now())
+
+  ledgerAccount LedgerAccount @relation(fields: [ledgerAccountId], references: [id], onDelete: Cascade)
+  transaction   Transaction   @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@index([ledgerAccountId])
+  @@map("ledger_entries")
+}
+
+model Transaction {
+  id                String                @id @default(uuid())
+  walletId          String
+  reference         String                @unique
+  type              WalletTransactionType
+  status            TransactionStatus     @default(PENDING)
+  amountMinor       Int
+  currency          String
+  source            String?
+  destination       String?
+  provider          String?
+  providerReference String?
+  /// Unique so a replayed request with the same key can't create a
+  /// duplicate financial operation — see Idempotency-Key handling (Phase 4+).
+  idempotencyKey    String?               @unique
+  metadata          Json?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+
+  wallet           Wallet            @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  entries          LedgerEntry[]
+  payrollBatchItem PayrollBatchItem?
+
+  @@index([walletId])
+  @@index([status])
+  @@map("transactions")
+}
+
+// Phase 5/6 (this change): Mock Bank API + PaymentProvider abstraction.
+//   - MerchantBankAccount : a bank account a merchant has linked to their
+//     own SAPOK Pay account, verified via PaymentProvider.verifyAccount at
+//     link time. This is what DEPOSIT/WITHDRAWAL transfers move money to/from.
+//   - MockBankAccount / MockBankTransfer : the simulated EXTERNAL bank's
+//     own state — deliberately a separate table from Wallet/LedgerEntry
+//     (SAPOK Pay's own source of truth) so MockBankProviderService behaves
+//     like an opaque third-party system reached only through the
+//     PaymentProvider interface, exactly like a real bank integration
+//     would be. One MockBankAccount per Merchant, lazily provisioned with a
+//     starting balance the first time it's needed — not linked 1:1 to a
+//     specific MerchantBankAccount, since this mock isn't modelling
+//     multi-account balance routing, just realistic success/failure
+//     behaviour for a merchant's one connected external balance.
+//   - MockBankTransfer resolves SYNCHRONOUSLY (SUCCESSFUL/FAILED, no
+//     PENDING) — real settlement latency will be modelled properly once
+//     Phase 9 (webhooks) exists; until then, MockBankProviderService just
+//     awaits a short artificial delay and returns a final status in the
+//     same call, so this doesn't need async infrastructure it doesn't have
+//     yet to be testable end-to-end today.
+model MerchantBankAccount {
+  id            String   @id @default(uuid())
+  merchantId    String
+  accountNumber String
+  accountName   String
+  bankCode      String   @default("MOCK001")
+  createdAt     DateTime @default(now())
+
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  @@unique([merchantId, accountNumber])
+  @@index([merchantId])
+  @@map("merchant_bank_accounts")
+}
+
+model MockBankAccount {
+  id            String   @id @default(uuid())
+  merchantId    String   @unique
+  accountNumber String   @unique
+  balanceMinor  Int      @default(10000000)
+  currency      String   @default("NGN")
+  createdAt     DateTime @default(now())
+
+  transfers MockBankTransfer[]
+
+  @@map("mock_bank_accounts")
+}
+
+enum MockBankTransferStatus {
+  SUCCESSFUL
+  FAILED
+}
+
+model MockBankTransfer {
+  id            String                 @id @default(uuid())
+  reference     String                 @unique
+  bankAccountId String
+  direction     LedgerEntryDirection
+  amountMinor   Int
+  status        MockBankTransferStatus
+  failureReason String?
+  createdAt     DateTime               @default(now())
+
+  bankAccount MockBankAccount @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
+
+  @@index([bankAccountId])
+  @@map("mock_bank_transfers")
+}
+
+/// Append-only audit trail for every sensitive financial event (wallet
+/// adjustments, and eventually funding/transfers/payroll/reversals as
+/// those phases land). actorId is deliberately loose (not a foreign key) —
+/// the actor can be an AdminUser, a Merchant, or "SYSTEM" for
+/// automated/background actions, each a different identity space.
+model AuditLog {
+  id           String   @id @default(uuid())
+  actorType    String
+  actorId      String?
+  merchantId   String?
+  action       String
+  resourceType String
+  resourceId   String?
+  metadata     Json?
+  createdAt    DateTime @default(now())
+
+  @@index([merchantId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// Phase 8 (this change): payroll payment batches, partial-failure aware.
+//   - PayrollBatch     : one submission of many payouts (e.g. one payroll
+//     run's worth of net salaries). Recipients are raw account numbers, NOT
+//     MerchantBankAccount rows — unlike a withdrawal (the merchant cashing
+//     out to their OWN verified account), a payroll batch pays many
+//     one-off THIRD-PARTY accounts each cycle, exactly like a real payroll
+//     system. Each recipient is still verified via PaymentProvider before
+//     any money moves.
+//   - PayrollBatchItem : one payout within a batch. Items are processed
+//     independently — one item failing (bad account, insufficient
+//     remaining wallet balance partway through the batch) does NOT abort
+//     the rest of the batch. `transactionId` links to the Transaction that
+//     was actually posted for a SUCCESSFUL item; a FAILED item has none.
+
+enum PayrollBatchStatus {
+  PROCESSING
+  COMPLETED
+  PARTIALLY_FAILED
+  FAILED
+}
+
+enum PayrollBatchItemStatus {
+  SUCCESSFUL
+  FAILED
+}
+
+model PayrollBatch {
+  id               String             @id @default(uuid())
+  merchantId       String
+  reference        String             @unique
+  status           PayrollBatchStatus @default(PROCESSING)
+  totalAmountMinor Int
+  currency         String             @default("NGN")
+  idempotencyKey   String?            @unique
+  createdAt        DateTime           @default(now())
+  completedAt      DateTime?
+
+  merchant Merchant           @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  items    PayrollBatchItem[]
+
+  @@index([merchantId])
+  @@map("payroll_batches")
+}
+
+model PayrollBatchItem {
+  id                     String                 @id @default(uuid())
+  batchId                String
+  recipientAccountNumber String
+  recipientAccountName   String?
+  /// Merchant-supplied label for their own bookkeeping (e.g. an employee
+  /// name/ID) — distinct from recipientAccountName, which is bank-verified.
+  recipientLabel         String?
+  amountMinor            Int
+  status                 PayrollBatchItemStatus
+  failureReason          String?
+  providerReference      String?
+  transactionId          String?                @unique
+  createdAt              DateTime               @default(now())
+
+  batch       PayrollBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  transaction Transaction? @relation(fields: [transactionId], references: [id], onDelete: SetNull)
+
+  @@index([batchId])
+  @@map("payroll_batch_items")
+}
+
+// Phase 9 (this change): outbound webhooks — SAPOK Pay notifying a
+// merchant's own application of events (transaction settled, payroll
+// batch completed), NOT inbound webhooks from a bank provider (that only
+// becomes meaningful once a provider has real async settlement — Mock
+// Bank still resolves synchronously, see Phase 5/6's header comment).
+//   - MerchantWebhookEndpoint : one URL + signing secret per merchant.
+//     Unlike an ApiKey (a credential the merchant presents TO us, so only
+//     its hash is stored), a webhook secret is used by the MERCHANT to
+//     verify signatures FROM us — they need to read it back, so it's
+//     stored reversibly, not hashed. Known gap: stored in plain text, no
+//     encryption-at-rest layer exists in this project yet.
+//   - WebhookEvent : one row per logical event, mutable (status/attempts/
+//     responseStatus/lastAttemptAt update in place on redelivery) — this
+//     is operational delivery state, not a financial record, so it
+//     doesn't need the append-only immutability LedgerEntry/Transaction
+//     require.
+model MerchantWebhookEndpoint {
+  id        String   @id @default(uuid())
+  merchantId String  @unique
+  url       String
+  secret    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  merchant Merchant       @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  events   WebhookEvent[]
+
+  @@map("merchant_webhook_endpoints")
+}
+
+enum WebhookDeliveryStatus {
+  DELIVERED
+  FAILED
+}
+
+model WebhookEvent {
+  id             String                @id @default(uuid())
+  merchantId     String
+  endpointId     String
+  eventType      String
+  payload        Json
+  status         WebhookDeliveryStatus
+  responseStatus Int?
+  attempts       Int                   @default(1)
+  createdAt      DateTime              @default(now())
+  lastAttemptAt  DateTime              @default(now())
+
+  endpoint MerchantWebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+
+  @@index([merchantId])
+  @@map("webhook_events")
+}

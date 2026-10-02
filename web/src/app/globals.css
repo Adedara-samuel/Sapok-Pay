@@ -1,0 +1,80 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * SAPOK Pay brand palette — the same green/teal (#00C896 family) every
+ * SAPOK product shares. Light is the baseline token set; `.dark` (set by
+ * ThemeProvider on <html>) redefines the same tokens, so the toggle always
+ * wins over the OS preference. Never give a token its only definition
+ * inside the .dark block.
+ */
+:root {
+  --background: 150 20% 98%;
+  --surface: 0 0% 100%;
+  --foreground: 222 30% 11%;
+  --primary: 165 100% 33%;
+  --primary-foreground: 0 0% 100%;
+  --accent: 174 80% 40%;
+  --accent-foreground: 0 0% 100%;
+  --muted: 150 15% 95%;
+  --muted-foreground: 215 16% 44%;
+  --border: 150 15% 89%;
+  --success: 100 60% 32%;
+  --danger: 0 72% 50%;
+}
+
+.dark {
+  --background: 180 25% 5%;
+  --surface: 180 20% 8%;
+  --foreground: 150 15% 96%;
+  --primary: 165 90% 45%;
+  --primary-foreground: 180 25% 6%;
+  --accent: 174 85% 55%;
+  --accent-foreground: 180 25% 6%;
+  --muted: 180 15% 13%;
+  --muted-foreground: 165 10% 65%;
+  --border: 180 15% 17%;
+  --success: 100 65% 48%;
+  --danger: 0 84% 65%;
+}
+
+body {
+  @apply bg-background text-foreground;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+::selection {
+  background-color: hsl(var(--primary) / 0.3);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--border)) transparent;
+}
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--border));
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--primary) / 0.5);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

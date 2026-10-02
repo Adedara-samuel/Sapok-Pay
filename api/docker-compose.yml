@@ -1,0 +1,61 @@
+# `docker compose up -d postgres redis` for local dev (API runs natively via
+# `pnpm dev`), or `docker compose --profile full up -d` to run everything
+# containerized, including the API itself.
+name: sapok-pay
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: sapok-pay-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-sapok_pay}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sapok_pay_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-sapok_pay}
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - sapok_pay_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sapok_pay} -d ${POSTGRES_DB:-sapok_pay}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: sapok-pay-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6380}:6379"
+    volumes:
+      - sapok_pay_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sapok-pay-api
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-sapok_pay}:${POSTGRES_PASSWORD:-sapok_pay_dev_password}@postgres:5432/${POSTGRES_DB:-sapok_pay}?schema=public
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "${SAPOK_PAY_PORT:-4100}:4100"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    profiles: ["full"]
+
+volumes:
+  sapok_pay_postgres_data:
+  sapok_pay_redis_data:
