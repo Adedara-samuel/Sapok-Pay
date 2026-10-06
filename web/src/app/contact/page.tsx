@@ -83,7 +83,7 @@ export default function ContactPage() {
         </p>
       </section>
 
-      <section className="relative mx-auto grid max-w-5xl grid-cols-1 gap-6 px-4 pb-20 sm:px-6 lg:grid-cols-[1.4fr_1fr]">
+      <section className="relative mx-auto grid max-w-5xl grid-cols-1 gap-6 px-4 pb-20 sm:px-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
         <Card>
           <div className="p-6 sm:p-8">
             {submitted ? (

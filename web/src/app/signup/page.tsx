@@ -36,7 +36,7 @@ export default function MerchantSignupPage() {
   });
 
   return (
-    <main className="grid min-h-screen grid-cols-1 bg-background lg:grid-cols-[1.1fr_1fr]">
+    <main className="grid min-h-screen grid-cols-1 bg-background lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
       <div className="relative hidden flex-col justify-between overflow-hidden border-r border-border px-14 py-12 lg:flex">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_25%_15%,hsl(var(--primary)/0.2),transparent_55%)]" />
         <div className="pointer-events-none absolute -inset-1/4 animate-float bg-[radial-gradient(circle_at_80%_75%,hsl(var(--accent)/0.12),transparent_45%)]" />

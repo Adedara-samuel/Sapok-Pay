@@ -61,6 +61,17 @@ export function CardContent({ className, ...props }: HTMLAttributes<HTMLDivEleme
   return <div className={cn("flex flex-col gap-4 p-5 pt-0 sm:p-6 sm:pt-0", className)} {...props} />;
 }
 
+/**
+ * Like CardContent, but for a Card with no CardHeader above it — full
+ * padding on every side. CardContent always zeroes its own top padding
+ * (assuming a CardHeader sits above it supplying that space); used without
+ * one, that padding silently collapses — this is the component for every
+ * card that's just a body, no header.
+ */
+export function CardBody({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
+  return <div className={cn("flex flex-col gap-4 p-5 sm:p-6", className)} {...props} />;
+}
+
 const BADGE_VARIANTS = {
   default: "bg-muted text-muted-foreground",
   success: "bg-success/15 text-success",

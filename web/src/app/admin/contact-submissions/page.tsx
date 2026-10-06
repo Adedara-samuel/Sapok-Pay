@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CornerDownRight, Send } from "lucide-react";
 import { AdminShell } from "@/components/admin-shell";
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle, MutedText } from "@/components/ui";
+import { LiveIndicator } from "@/components/live-indicator";
 import { useToast } from "@/components/toast";
 import { apiClient, SapokPayApiError } from "@/lib/api-client";
 
@@ -48,20 +49,27 @@ function ReplyForm({ submissionId, onSent }: { submissionId: string; onSent: () 
 
 export default function AdminContactSubmissionsPage() {
   const queryClient = useQueryClient();
-  const submissionsQuery = useQuery({ queryKey: ["admin-contact-submissions"], queryFn: () => apiClient.admin.listContactSubmissions() });
+  const submissionsQuery = useQuery({ queryKey: ["admin-contact-submissions"], queryFn: () => apiClient.admin.listContactSubmissions(), refetchInterval: 15_000 });
   const submissions = submissionsQuery.data ?? [];
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
 
   return (
     <AdminShell title="Contact submissions">
-      <p className="mb-4 text-sm text-muted-foreground">Everyone who's reached out through the public "Contact sales" form.</p>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm text-muted-foreground">Everyone who's reached out through the public "Contact sales" form.</p>
+        <LiveIndicator lastUpdated={submissionsQuery.dataUpdatedAt} />
+      </div>
 
       {submissionsQuery.isLoading && <MutedText>Loading…</MutedText>}
       {submissions.length === 0 && !submissionsQuery.isLoading && <MutedText>No contact submissions yet.</MutedText>}
 
       <div className="flex flex-col gap-3">
         {submissions.map((submission, i) => (
-          <Card key={submission.id} style={{ animationDelay: `${i * 40}ms` }} className="animate-fade-in-up">
+          <Card
+            key={submission.id}
+            style={{ animationDelay: `${Math.min(i * 40, 300)}ms` }}
+            className="animate-fade-in-up transition-all duration-200 hover:border-primary/30 hover:shadow-card"
+          >
             <CardHeader className="flex-row items-start justify-between gap-4">
               <div>
                 <CardTitle className="flex items-center gap-2">

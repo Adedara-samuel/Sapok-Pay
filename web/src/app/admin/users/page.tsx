@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, X } from "lucide-react";
 import { AdminShell } from "@/components/admin-shell";
-import { Badge, Button, Card, CardContent, Input, Label, MutedText } from "@/components/ui";
+import { Badge, Button, Card, CardBody, Input, Label, MutedText } from "@/components/ui";
+import { LiveIndicator } from "@/components/live-indicator";
 import { useToast } from "@/components/toast";
 import { apiClient, SapokPayApiError } from "@/lib/api-client";
 
@@ -14,7 +15,7 @@ const selectClassName =
 export default function AdminUsersPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const usersQuery = useQuery({ queryKey: ["admin-users"], queryFn: () => apiClient.admin.listUsers() });
+  const usersQuery = useQuery({ queryKey: ["admin-users"], queryFn: () => apiClient.admin.listUsers(), refetchInterval: 15_000 });
   const organizationsQuery = useQuery({ queryKey: ["admin-organizations"], queryFn: () => apiClient.admin.listOrganizations() });
   const users = usersQuery.data ?? [];
   const organizations = organizationsQuery.data ?? [];
@@ -41,8 +42,11 @@ export default function AdminUsersPage() {
 
   return (
     <AdminShell title="Users">
-      <div className="mb-4 flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">Everyone who can sign in — organization owners and the members they've invited.</p>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <p className="text-sm text-muted-foreground">Everyone who can sign in — organization owners and the members they've invited.</p>
+          <LiveIndicator lastUpdated={usersQuery.dataUpdatedAt} />
+        </div>
         <Button size="sm" onClick={() => setShowForm((v) => !v)}>
           {showForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
           {showForm ? "Cancel" : "Create user"}
@@ -50,8 +54,8 @@ export default function AdminUsersPage() {
       </div>
 
       {showForm && (
-        <Card className="mb-4">
-          <CardContent className="flex flex-col gap-4 p-5">
+        <Card className="mb-4 animate-scale-in">
+          <CardBody>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="org">Organization</Label>
@@ -93,7 +97,7 @@ export default function AdminUsersPage() {
             >
               {createMutation.isPending ? "Creating…" : "Create user"}
             </Button>
-          </CardContent>
+          </CardBody>
         </Card>
       )}
 
@@ -102,20 +106,29 @@ export default function AdminUsersPage() {
 
       <div className="flex flex-col gap-2">
         {users.map((user, i) => (
-          <Card key={user.id} style={{ animationDelay: `${i * 40}ms` }} className="animate-fade-in-up">
-            <CardContent className="flex items-center justify-between p-4">
-              <div>
-                <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                  {user.name}
-                  <Badge variant={user.role === "OWNER" ? "default" : "outline"}>{user.role}</Badge>
-                  <Badge variant={user.status === "ACTIVE" ? "success" : "danger"}>{user.status}</Badge>
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {user.email} · {user.organizationName}
-                </p>
+          <Card
+            key={user.id}
+            style={{ animationDelay: `${Math.min(i * 40, 300)}ms` }}
+            className="animate-fade-in-up transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-card"
+          >
+            <CardBody className="flex-row items-center justify-between gap-3 p-4">
+              <div className="flex items-center gap-3">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-accent/20 to-primary/20 text-xs font-bold text-primary">
+                  {user.name.slice(0, 2).toUpperCase()}
+                </span>
+                <div>
+                  <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                    {user.name}
+                    <Badge variant={user.role === "OWNER" ? "default" : "outline"}>{user.role}</Badge>
+                    <Badge variant={user.status === "ACTIVE" ? "success" : "danger"}>{user.status}</Badge>
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {user.email} · {user.organizationName}
+                  </p>
+                </div>
               </div>
-              <p className="text-xs text-muted-foreground">{user.lastLoginAt ? `Last seen ${new Date(user.lastLoginAt).toLocaleDateString()}` : "Never signed in"}</p>
-            </CardContent>
+              <p className="shrink-0 text-xs text-muted-foreground">{user.lastLoginAt ? `Last seen ${new Date(user.lastLoginAt).toLocaleDateString()}` : "Never signed in"}</p>
+            </CardBody>
           </Card>
         ))}
       </div>

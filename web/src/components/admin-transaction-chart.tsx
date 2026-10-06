@@ -48,8 +48,8 @@ export function TransactionChart({ points }: { points: TransactionSeriesPoint[] 
   const gridLines = [0, 0.25, 0.5, 0.75, 1];
 
   return (
-    <div className="relative w-full">
-      <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="w-full" role="img" aria-label="Transaction volume over time">
+    <div className="relative min-w-0 w-full">
+      <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="block w-full min-w-0" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Transaction volume over time">
         <defs>
           <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.28" />

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { CreditCard, Globe } from "lucide-react";
 import { AdminShell } from "@/components/admin-shell";
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label, MutedText } from "@/components/ui";
 import { useToast } from "@/components/toast";
@@ -33,7 +34,7 @@ function PlanEditor({ plan }: { plan: PlanDetailed }) {
   const dirty = name !== plan.name || price !== minorToNaira(plan.priceMinor) || fee !== bpsToPercent(plan.transactionFeeBps);
 
   return (
-    <div className="flex flex-col gap-3 rounded-md border border-border p-4">
+    <div className="flex flex-col gap-3 rounded-lg border border-border p-4 transition-colors hover:border-primary/30">
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={`${plan.id}-name`}>Plan name</Label>
         <Input id={`${plan.id}-name`} value={name} onChange={(e) => setName(e.target.value)} />
@@ -78,10 +79,15 @@ export default function AdminSettingsPage() {
   return (
     <AdminShell title="Settings">
       <div className="flex flex-col gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Website content</CardTitle>
-            <CardDescription>Everything editable here is what the public marketing site actually renders — hero copy, contact details, the closing call-to-action.</CardDescription>
+        <Card className="animate-fade-in-up">
+          <CardHeader className="flex-row items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-accent/20 to-primary/20 text-primary">
+              <Globe className="h-5 w-5" />
+            </span>
+            <div>
+              <CardTitle>Website content</CardTitle>
+              <CardDescription>Everything editable here is what the public marketing site actually renders — hero copy, contact details, the closing call-to-action.</CardDescription>
+            </div>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             {settingsQuery.isLoading && <MutedText>Loading…</MutedText>}
@@ -108,10 +114,15 @@ export default function AdminSettingsPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Subscription plans</CardTitle>
-            <CardDescription>What the public pricing page shows, and what every organization is actually billed.</CardDescription>
+        <Card className="animate-fade-in-up [animation-delay:80ms]">
+          <CardHeader className="flex-row items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-accent/20 to-primary/20 text-primary">
+              <CreditCard className="h-5 w-5" />
+            </span>
+            <div>
+              <CardTitle>Subscription plans</CardTitle>
+              <CardDescription>What the public pricing page shows, and what every organization is actually billed.</CardDescription>
+            </div>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             {plansQuery.isLoading && <MutedText>Loading…</MutedText>}

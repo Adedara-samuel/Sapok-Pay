@@ -104,14 +104,24 @@ export class AdminService {
   async getTransactionSeries(range: "7d" | "30d" | "90d") {
     const days = range === "7d" ? 7 : range === "30d" ? 30 : 90;
     const since = new Date();
-    since.setDate(since.getDate() - days);
+    since.setDate(since.getDate() - (days - 1));
+    since.setHours(0, 0, 0, 0);
 
+    // generate_series fills in every day in the range with zeros, left-joined
+    // against the real transaction totals — without this, a day with no
+    // transactions is simply missing from the result instead of reading as
+    // zero, which turns a sparse-data chart into a jagged, misleading line
+    // instead of a proper continuous day-by-day timeline.
     const rows = await this.prisma.$queryRaw<{ day: Date; count: bigint; totalminor: bigint | null }[]>`
-      SELECT date_trunc('day', "createdAt") AS day, COUNT(*)::bigint AS count, SUM("amountMinor")::bigint AS totalminor
-      FROM transactions
-      WHERE "createdAt" >= ${since} AND status = 'SUCCESSFUL'
-      GROUP BY day
-      ORDER BY day ASC
+      SELECT d.day, COALESCE(t.count, 0)::bigint AS count, COALESCE(t.totalminor, 0)::bigint AS totalminor
+      FROM generate_series(${since}::date, CURRENT_DATE, '1 day'::interval) AS d(day)
+      LEFT JOIN (
+        SELECT date_trunc('day', "createdAt") AS day, COUNT(*)::bigint AS count, SUM("amountMinor")::bigint AS totalminor
+        FROM transactions
+        WHERE "createdAt" >= ${since} AND status = 'SUCCESSFUL'
+        GROUP BY day
+      ) t ON t.day = d.day
+      ORDER BY d.day ASC
     `;
 
     return rows.map((row) => ({ date: row.day.toISOString().slice(0, 10), count: Number(row.count), totalMinor: Number(row.totalminor ?? 0) }));

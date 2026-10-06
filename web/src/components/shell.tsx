@@ -5,6 +5,7 @@ import Link from "next/link";
 import { LogOut } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/auth-store";
+import { useAuthHydration } from "@/lib/use-auth-hydration";
 import { PoweredBySapok } from "./powered-by-sapok";
 import { ThemeToggle } from "./theme-toggle";
 import { Logo } from "./wordmark";
@@ -16,19 +17,26 @@ const MERCHANT_NAV = [
   { label: "Webhooks", href: "/webhooks" },
 ];
 
-/** The merchant dashboard shell. Admin pages use AdminShell instead — a sidebar layout, not this top nav. */
+/**
+ * The merchant dashboard shell. Admin pages use AdminShell instead — a
+ * sidebar layout, not this top nav. Waits for zustand's persisted session to
+ * actually finish loading before deciding to redirect — checking too early
+ * reads the store's default logged-out state and bounces an already-signed-in
+ * merchant back to login on every fresh page load.
+ */
 export function Shell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  const hydrated = useAuthHydration();
   const accessToken = useAuthStore((state) => state.accessToken);
   const scope = useAuthStore((state) => state.scope);
   const clear = useAuthStore((state) => state.clear);
 
   useEffect(() => {
-    if (!accessToken || scope !== "merchant") router.replace("/login");
-  }, [accessToken, scope, router]);
+    if (hydrated && (!accessToken || scope !== "merchant")) router.replace("/login");
+  }, [hydrated, accessToken, scope, router]);
 
-  if (!accessToken || scope !== "merchant") return null;
+  if (!hydrated || !accessToken || scope !== "merchant") return null;
 
   return (
     <div className="flex min-h-screen flex-col bg-background">

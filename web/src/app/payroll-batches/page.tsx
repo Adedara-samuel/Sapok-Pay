@@ -85,7 +85,7 @@ function CreateBatchForm() {
       <CardContent className="flex flex-col gap-4">
         <div className="flex flex-col gap-3">
           {items.map((item, index) => (
-            <div key={index} className="grid gap-2 sm:grid-cols-[2fr_1fr_1.5fr_auto]">
+            <div key={index} className="grid gap-2 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1.5fr)_auto]">
               <Input
                 placeholder="Account number"
                 value={item.recipientAccountNumber}

@@ -1,8 +1,10 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { CreditCard } from "lucide-react";
 import { AdminShell } from "@/components/admin-shell";
-import { Badge, Card, CardContent, MutedText } from "@/components/ui";
+import { Badge, Card, CardBody, MutedText } from "@/components/ui";
+import { LiveIndicator } from "@/components/live-indicator";
 import { useToast } from "@/components/toast";
 import { apiClient, SapokPayApiError } from "@/lib/api-client";
 import type { SubscriptionStatus } from "@/lib/types";
@@ -21,7 +23,7 @@ const selectClassName =
 export default function AdminSubscriptionsPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const subscriptionsQuery = useQuery({ queryKey: ["admin-subscriptions"], queryFn: () => apiClient.admin.listSubscriptions() });
+  const subscriptionsQuery = useQuery({ queryKey: ["admin-subscriptions"], queryFn: () => apiClient.admin.listSubscriptions(), refetchInterval: 15_000 });
   const plansQuery = useQuery({ queryKey: ["admin-subscription-plans"], queryFn: () => apiClient.admin.listSubscriptionPlans() });
   const subscriptions = subscriptionsQuery.data ?? [];
   const plans = plansQuery.data ?? [];
@@ -38,23 +40,35 @@ export default function AdminSubscriptionsPage() {
 
   return (
     <AdminShell title="Subscriptions">
-      <p className="mb-4 text-sm text-muted-foreground">Every organization's billing plan — change it here and the new rate applies immediately.</p>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm text-muted-foreground">Every organization's billing plan — change it here and the new rate applies immediately.</p>
+        <LiveIndicator lastUpdated={subscriptionsQuery.dataUpdatedAt} />
+      </div>
 
       {subscriptionsQuery.isLoading && <MutedText>Loading…</MutedText>}
       {subscriptions.length === 0 && !subscriptionsQuery.isLoading && <MutedText>No subscriptions yet.</MutedText>}
 
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2.5">
         {subscriptions.map((sub, i) => (
-          <Card key={sub.id} style={{ animationDelay: `${i * 40}ms` }} className="animate-fade-in-up">
-            <CardContent className="flex items-center justify-between gap-4 p-4">
-              <div>
-                <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                  {sub.organizationName}
-                  <Badge variant={STATUS_VARIANT[sub.status]}>{sub.status}</Badge>
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {sub.organizationEmail} · {naira(sub.plan.priceMinor)}/mo · renews {new Date(sub.currentPeriodEnd).toLocaleDateString()}
-                </p>
+          <Card
+            key={sub.id}
+            style={{ animationDelay: `${Math.min(i * 40, 300)}ms` }}
+            className="animate-fade-in-up transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-card"
+          >
+            <CardBody className="flex-row items-center justify-between gap-4 p-4">
+              <div className="flex items-center gap-3">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <CreditCard className="h-4 w-4" />
+                </span>
+                <div>
+                  <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                    {sub.organizationName}
+                    <Badge variant={STATUS_VARIANT[sub.status]}>{sub.status}</Badge>
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {sub.organizationEmail} · {naira(sub.plan.priceMinor)}/mo · renews {new Date(sub.currentPeriodEnd).toLocaleDateString()}
+                  </p>
+                </div>
               </div>
               <select
                 className={selectClassName}
@@ -68,7 +82,7 @@ export default function AdminSubscriptionsPage() {
                   </option>
                 ))}
               </select>
-            </CardContent>
+            </CardBody>
           </Card>
         ))}
       </div>

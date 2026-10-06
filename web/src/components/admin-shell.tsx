@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Banknote, Building2, CreditCard, LayoutDashboard, LogOut, Mail, Receipt, Settings, Users, Wallet } from "lucide-react";
 import { useAuthStore } from "@/lib/auth-store";
+import { useAuthHydration } from "@/lib/use-auth-hydration";
 import { ThemeToggle } from "./theme-toggle";
 import { Logo } from "./wordmark";
 import { AdminNotifications } from "./admin-notifications";
@@ -21,19 +22,26 @@ const NAV = [
   { label: "Settings", href: "/admin/settings", icon: Settings },
 ];
 
-/** Redirects to /login if signed out or signed in with the wrong scope. */
+/**
+ * Redirects to /login if signed out or signed in with the wrong scope — but
+ * only once zustand's persisted session has actually finished loading from
+ * localStorage. Checking before that point reads the store's default
+ * (logged-out) state and bounces an already-signed-in admin back to login
+ * on every fresh page load, which is exactly the bug this guards against.
+ */
 export function AdminShell({ title, children }: { title: string; children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  const hydrated = useAuthHydration();
   const accessToken = useAuthStore((state) => state.accessToken);
   const scope = useAuthStore((state) => state.scope);
   const clear = useAuthStore((state) => state.clear);
 
   useEffect(() => {
-    if (!accessToken || scope !== "admin") router.replace("/login");
-  }, [accessToken, scope, router]);
+    if (hydrated && (!accessToken || scope !== "admin")) router.replace("/login");
+  }, [hydrated, accessToken, scope, router]);
 
-  if (!accessToken || scope !== "admin") return null;
+  if (!hydrated || !accessToken || scope !== "admin") return null;
 
   return (
     <div className="flex min-h-screen bg-background">
