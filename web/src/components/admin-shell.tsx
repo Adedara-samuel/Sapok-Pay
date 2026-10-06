@@ -83,7 +83,7 @@ export function AdminShell({ title, children }: { title: string; children: React
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-border bg-surface/60 px-4 py-3 backdrop-blur sm:px-6">
+        <header className="relative z-30 flex items-center justify-between border-b border-border bg-surface/60 px-4 py-3 backdrop-blur sm:px-6">
           <div className="flex items-center gap-2 md:hidden">
             <Logo size="sm" />
           </div>

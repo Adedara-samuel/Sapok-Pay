@@ -126,7 +126,7 @@ export default function AdminDashboardPage() {
       </div>
 
       <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-        <Card className="animate-fade-in-up [animation-delay:280ms]">
+        <Card className="animate-fade-in-up self-start [animation-delay:280ms]">
           <CardHeader className="flex-row items-center justify-between">
             <CardTitle>Transaction Overview</CardTitle>
             <div className="flex gap-1 rounded-md bg-muted p-0.5">

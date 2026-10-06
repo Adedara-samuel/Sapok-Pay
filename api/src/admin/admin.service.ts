@@ -127,7 +127,7 @@ export class AdminService {
     return rows.map((row) => ({ date: row.day.toISOString().slice(0, 10), count: Number(row.count), totalMinor: Number(row.totalminor ?? 0) }));
   }
 
-  async getRecentActivity(limit = 10) {
+  async getRecentActivity(limit = 5) {
     const [signups, transactions] = await Promise.all([
       this.prisma.merchant.findMany({ orderBy: { createdAt: "desc" }, take: limit, select: { id: true, businessName: true, createdAt: true } }),
       this.prisma.transaction.findMany({
